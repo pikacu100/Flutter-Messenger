@@ -1,7 +1,6 @@
 # Flutter-Messenger
 
-A simple and modern real-time chat application built with Flutter and powered by Firebase. Includes support for authentication, text and image messages, and dark/light theme switching. Perfect as a learning project or a foundation for a larger messaging app.
-
+A simple and modern real-time chat application built with Flutter and powered by Firebase. Includes support for authentication, text and image messages, and dark/light theme switching.
 # Features
 
 🔐 Firebase Authentication (email & password)
