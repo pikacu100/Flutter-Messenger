@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_messenger/services/chat/chat_service.dart';
 import 'package:flutter_messenger/services/chat/typing_indicator.dart';
 import 'package:flutter_messenger/services/encryption.dart';
+import 'package:flutter_messenger/style.dart';
 
 class ChatPage extends StatefulWidget {
   final String receiverUserNickname;
@@ -127,11 +128,7 @@ class _ChatPageState extends State<ChatPage> {
       appBar: AppBar(
         title: Text(widget.receiverUserNickname),
         centerTitle: true,
-        titleTextStyle: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: isDarkMode ? Colors.white : Colors.grey.shade900,
-        ),
+        titleTextStyle: FontStyles().appBarStyle(isDarkMode),
         surfaceTintColor:
             isDarkMode ? Colors.grey.shade900 : Colors.grey.shade300,
         leading: IconButton(
@@ -175,7 +172,7 @@ class _ChatPageState extends State<ChatPage> {
                 }
               },
             ),
-            _buildMessageInput(),
+            _buildMessageInput(isDarkMode),
           ],
         ),
       ),
@@ -319,6 +316,7 @@ class _ChatPageState extends State<ChatPage> {
       context: context,
       position: popupPosition,
       surfaceTintColor: Colors.grey.shade900,
+      elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10.0),
       ),
@@ -345,7 +343,6 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ),
       ],
-      elevation: 8.0,
     ).then((value) {
       if (value == 'delete') {
         ChatService().deleteMessage(
@@ -358,38 +355,52 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  Widget _buildMessageInput() {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _messageController,
-            onChanged: (_) => detectTyping(),
-            cursorColor: Colors.grey.shade300,
-            decoration: InputDecoration(
-              hintText: 'Send message...',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.0),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+ Widget _buildMessageInput(bool isDarkMode) {
+  return Row(
+    children: [
+      Expanded(
+        child: TextField(
+          controller: _messageController,
+          onChanged: (_) => detectTyping(),
+          cursorColor: Colors.blueAccent,
+          decoration: InputDecoration(
+            hintText: 'Send message...',
+            hintStyle: TextStyle(color: Colors.grey.shade500),
+            border: OutlineInputBorder(
+              borderSide: const BorderSide(
+                color: Colors.transparent
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.0),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              borderRadius: BorderRadius.circular(10.0),
             ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: const BorderSide(
+                color: Colors.transparent,
+              ),
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderSide: const BorderSide(
+                color: Colors.transparent,
+              ),
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            filled: true,
+            fillColor:isDarkMode? Colors.grey.shade900 : Colors.grey.shade300,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           ),
         ),
-        const SizedBox(width: 8.0),
-        CircleAvatar(
-          backgroundColor: Colors.blue,
-          child: IconButton(
-            icon: const Icon(Icons.send, color: Colors.white),
-            onPressed: sendMessage,
-          ),
+      ),
+      const SizedBox(width: 12.0),
+      CircleAvatar(
+        backgroundColor: Colors.blueAccent,
+        radius: 20.0,
+        child: IconButton(
+          icon: const Icon(Icons.send, color: Colors.white),
+          onPressed: sendMessage,
+          iconSize: 24.0,
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 }

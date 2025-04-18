@@ -1,10 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_messenger/screens/chat/chatpage.dart';
+import 'package:flutter_messenger/screens/friends.dart';
+import 'package:flutter_messenger/screens/user/account.dart';
 import 'package:flutter_messenger/screens/user/login.dart';
 import 'package:flutter_messenger/services/encryption.dart';
 import 'package:flutter_messenger/services/user.dart';
+import 'package:flutter_messenger/style.dart';
 
 class LandingPage extends StatefulWidget {
   final Function(ThemeMode) onThemeChanged;
@@ -40,6 +44,7 @@ class _LandingPageState extends State<LandingPage> {
       appBar: AppBar(
         centerTitle: true,
         title: const Text('Flutter Messenger'),
+        titleTextStyle: FontStyles().appBarStyle(isDarkMode),
         actions: [
           IconButton(
               onPressed: () => UserData().signUserOut().then((_) =>
@@ -64,8 +69,50 @@ class _LandingPageState extends State<LandingPage> {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
-        child: buildUserList(isDarkMode),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const AccountPage())),
+                      style: ElevatedButton.styleFrom(
+                          alignment: Alignment.centerLeft,
+                          backgroundColor: const Color(0xFF0077FF),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          )),
+                      child: const Center(child: Text("Account"))),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => FriendsPage(
+                                    onThemeChanged: widget.onThemeChanged,
+                                  ))),
+                      style: ElevatedButton.styleFrom(
+                          alignment: Alignment.centerLeft,
+                          backgroundColor: const Color(0xFF0077FF),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          )),
+                      child: const Center(child: Text("Your Friends"))),
+                ),
+              ],
+            ),
+            Expanded(child: buildUserList(isDarkMode)),
+          ],
+        ),
       ),
     );
   }
@@ -122,7 +169,7 @@ class _LandingPageState extends State<LandingPage> {
               MaterialPageRoute(
                   builder: (context) => ChatPage(
                         receiverUserId: data['uid'],
-                        receiverUserNickname: data['nickname'],
+                        receiverUserNickname: data['nickname'] ?? "Anonymous",
                       )));
         },
       ),

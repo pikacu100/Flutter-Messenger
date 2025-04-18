@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 class UserData {
   final user = FirebaseAuth.instance.currentUser;
@@ -29,6 +30,21 @@ class UserData {
       });
     } catch (e) {
       print("Error updating user nickname: $e");
+    }
+  }
+
+  Future<void> removeFriend(String snapshotId)async{
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user?.uid)
+          .collection('friends')
+          .doc(snapshotId)
+          .delete();
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error removing friend: $e");
+      }
     }
   }
 }
