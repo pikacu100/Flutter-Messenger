@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_messenger/model/message.dart';
 import 'package:flutter_messenger/services/encryption.dart';
 
@@ -29,7 +30,9 @@ class ChatService {
           .collection('messages')
           .add(newMessage.toMap());
     } catch (e) {
-      print("Error sending message: $e");
+      if (kDebugMode) {
+        print("Error sending message: $e");
+      }
     }
   }
 
@@ -45,5 +48,27 @@ class ChatService {
         .collection('messages')
         .orderBy('timestamp', descending: false)
         .snapshots();
+  }
+
+  Future<void> deleteMessage(
+      {required String userId,
+      required String anotherUserId,
+      required String docId}) async {
+    List<String> chatIds = [userId, anotherUserId];
+    chatIds.sort();
+    String chatRoomId = chatIds.join('_');
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('chatrooms')
+          .doc(chatRoomId)
+          .collection('messages')
+          .doc(docId)
+          .delete();
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error deleting message: $e");
+      }
+    }
   }
 }
