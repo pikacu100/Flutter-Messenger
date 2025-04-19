@@ -40,6 +40,7 @@ class _ChatPageState extends State<ChatPage> {
     chatRoomId = getChatRoomId(currentUserId, widget.receiverUserId);
     _typingIndicator =
         TypingIndicator(chatRoomId, currentUserId, widget.receiverUserId);
+    _markMessagesAsSeen();
   }
 
   void sendMessage() async {
@@ -50,12 +51,11 @@ class _ChatPageState extends State<ChatPage> {
       );
       _messageController.clear();
       _clearTypingStatus();
-      _markMessagesAsSeen();
       _scrollToBottom();
     }
   }
 
-   void _markMessagesAsSeen() {
+  void _markMessagesAsSeen() {
     _chatService.markMessagesAsSeen(otherUserId: widget.receiverUserId);
   }
 
@@ -252,7 +252,7 @@ class _ChatPageState extends State<ChatPage> {
     final nextTime = (nextData['timestamp'] as Timestamp).toDate();
     final timeDifference = nextTime.difference(currentTime).inMinutes;
 
-    return timeDifference >= 1;
+    return timeDifference >= 5;
   }
 
   Widget _buildMessageItem(DocumentSnapshot snapshot,
@@ -262,6 +262,11 @@ class _ChatPageState extends State<ChatPage> {
     var isMe = data['senderId'] == currentUserId;
     var alignment = isMe ? Alignment.centerRight : Alignment.centerLeft;
     var color = isMe ? Colors.blue[100] : Colors.grey[300];
+
+    bool hasBeenSeen = false;
+    if (isMe && data['seen'] != null) {
+      hasBeenSeen = data['seen'][widget.receiverUserId] ?? false;
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -298,9 +303,23 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
             if (showTime)
-              Text(
-                formatTimeStamp(data['timestamp']),
-                style: TextStyle(color: Colors.grey.shade600),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    formatTimeStamp(data['timestamp']),
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                  if (isMe)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4.0),
+                      child: Icon(
+                        hasBeenSeen ? Icons.done_all : Icons.done,
+                        size: 14.0,
+                        color: hasBeenSeen ? Colors.blue : Colors.grey.shade600,
+                      ),
+                    ),
+                ],
               ),
           ],
         ),
@@ -360,52 +379,52 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
- Widget _buildMessageInput(bool isDarkMode) {
-  return Row(
-    children: [
-      Expanded(
-        child: TextField(
-          controller: _messageController,
-          onChanged: (_) => detectTyping(),
-          cursorColor: Colors.blueAccent,
-          decoration: InputDecoration(
-            hintText: 'Send message...',
-            hintStyle: TextStyle(color: Colors.grey.shade500),
-            border: OutlineInputBorder(
-              borderSide: const BorderSide(
-                color: Colors.transparent
+  Widget _buildMessageInput(bool isDarkMode) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _messageController,
+            onChanged: (_) => detectTyping(),
+            cursorColor: Colors.blueAccent,
+            decoration: InputDecoration(
+              hintText: 'Send message...',
+              hintStyle: TextStyle(color: Colors.grey.shade500),
+              border: OutlineInputBorder(
+                borderSide: const BorderSide(color: Colors.transparent),
+                borderRadius: BorderRadius.circular(10.0),
               ),
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: const BorderSide(
-                color: Colors.transparent,
+              focusedBorder: OutlineInputBorder(
+                borderSide: const BorderSide(
+                  color: Colors.transparent,
+                ),
+                borderRadius: BorderRadius.circular(10.0),
               ),
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderSide: const BorderSide(
-                color: Colors.transparent,
+              enabledBorder: OutlineInputBorder(
+                borderSide: const BorderSide(
+                  color: Colors.transparent,
+                ),
+                borderRadius: BorderRadius.circular(10.0),
               ),
-              borderRadius: BorderRadius.circular(10.0),
+              filled: true,
+              fillColor:
+                  isDarkMode ? Colors.grey.shade900 : Colors.grey.shade300,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             ),
-            filled: true,
-            fillColor:isDarkMode? Colors.grey.shade900 : Colors.grey.shade300,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           ),
         ),
-      ),
-      const SizedBox(width: 12.0),
-      CircleAvatar(
-        backgroundColor: Colors.blueAccent,
-        radius: 20.0,
-        child: IconButton(
-          icon: const Icon(Icons.send, color: Colors.white),
-          onPressed: sendMessage,
-          iconSize: 24.0,
+        const SizedBox(width: 12.0),
+        CircleAvatar(
+          backgroundColor: Colors.blueAccent,
+          radius: 20.0,
+          child: IconButton(
+            icon: const Icon(Icons.send, color: Colors.white),
+            onPressed: sendMessage,
+            iconSize: 24.0,
+          ),
         ),
-      ),
-    ],
-  );
-}
+      ],
+    );
+  }
 }

@@ -139,7 +139,6 @@ class _LandingPageState extends State<LandingPage> {
         return const Center(child: Text('No active chats'));
       }
       
-      // Sort documents in Dart code by lastMessageTime
       final sortedDocs = snapshot.data!.docs.toList()
         ..sort((a, b) {
           final aData = a.data() as Map<String, dynamic>;
@@ -168,7 +167,7 @@ class _LandingPageState extends State<LandingPage> {
   Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
   List<dynamic> participants = data['participants'] ?? [];
   String currentUserId = FirebaseAuth.instance.currentUser!.uid;
-  final ChatService chatService = ChatService(); // Create instance
+  final ChatService chatService = ChatService();
 
   String? otherUserId;
   for (var userId in participants) {
