@@ -50,8 +50,13 @@ class _ChatPageState extends State<ChatPage> {
       );
       _messageController.clear();
       _clearTypingStatus();
+      _markMessagesAsSeen();
       _scrollToBottom();
     }
+  }
+
+   void _markMessagesAsSeen() {
+    _chatService.markMessagesAsSeen(otherUserId: widget.receiverUserId);
   }
 
   void _scrollToBottom() {
