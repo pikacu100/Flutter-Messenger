@@ -56,12 +56,17 @@ class ChatService {
           receiverId: true,
         },
       }, SetOptions(merge: true));
+
     } catch (e) {
       if (kDebugMode) {
         print("Error sending message: $e");
       }
     }
   }
+
+  
+
+ 
 
   Future<void> markMessagesAsSeen({required String otherUserId}) async {
     final String currentUserId = FirebaseAuth.instance.currentUser!.uid;

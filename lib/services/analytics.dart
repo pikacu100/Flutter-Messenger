@@ -1,5 +1,6 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_messenger/services/user.dart';
 
 class Analytics {
  
@@ -10,6 +11,7 @@ class Analytics {
       'user_id': userId,
       'time': DateTime.now().toIso8601String()
     });
+    UserData().storeFCMToken(userId);
     print("User active: $userId");
   }
 

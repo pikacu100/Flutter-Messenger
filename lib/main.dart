@@ -2,13 +2,23 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_messenger/firebase_options.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_messenger/screens/chat/chatpage.dart';
 import 'package:flutter_messenger/screens/landing.dart';
 import 'package:flutter_messenger/screens/user/login.dart';
 import 'package:flutter_messenger/screens/user/siqnup.dart';
 import 'package:flutter_messenger/services/auth.dart';
+import 'package:flutter_messenger/services/chat/notification_service.dart';
 import 'package:flutter_messenger/themes.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+final FirebaseMessaging firebaseMessaging = FirebaseMessaging.instance;
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print('Handling a background message: ${message.messageId}');
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -16,7 +26,48 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  
+
+    if (message.notification != null) {
+      _showFlutterNotification(message);
+    }
+  });
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  FirebaseMessaging.onMessageOpenedApp.listen(_navigateToChat);
+
+  await firebaseMessaging.requestPermission(
+    alert: true,
+    announcement: false,
+    badge: true,
+    carPlay: false,
+    criticalAlert: false,
+    provisional: false,
+    sound: true,
+  );
+
   runApp(const MainApp());
+}
+
+void _showFlutterNotification(RemoteMessage message) {
+  NotificationService.showNotification(
+    message,
+  );
+}
+
+void _navigateToChat(RemoteMessage message) {
+  final senderId = message.data['senderId'];
+
+  navigatorKey.currentState?.push(
+    MaterialPageRoute(
+      builder: (context) => ChatPage(
+        receiverUserId: senderId,
+        receiverUserNickname: message.notification?.title ?? 'User',
+      ),
+    ),
+  );
 }
 
 class MainApp extends StatefulWidget {

@@ -18,6 +18,8 @@ dependencies:
   firebase_ui_oauth_google: ^1.3.3
   flutter:
     sdk: flutter
+  flutter_local_notifications: ^18.0.1
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:

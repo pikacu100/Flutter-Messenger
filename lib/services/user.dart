@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_messenger/services/chat/notification_service.dart';
 
 class UserData {
   final user = FirebaseAuth.instance.currentUser;
@@ -47,4 +48,14 @@ class UserData {
       }
     }
   }
+
+  Future<void> storeFCMToken(String userId) async {
+  final token = await NotificationService.getDeviceToken();
+  if (token != null) {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .set({'fcmToken': token}, SetOptions(merge: true));
+  }
+}
 }
