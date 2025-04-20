@@ -12,6 +12,7 @@ class Analytics {
       'time': DateTime.now().toIso8601String()
     });
     UserData().storeFCMToken(userId);
+    UserData().updateUserActivity(userId);
     print("User active: $userId");
   }
 

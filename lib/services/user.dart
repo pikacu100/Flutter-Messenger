@@ -34,7 +34,7 @@ class UserData {
     }
   }
 
-  Future<void> removeFriend(String snapshotId)async{
+  Future<void> removeFriend(String snapshotId) async {
     try {
       await FirebaseFirestore.instance
           .collection('users')
@@ -50,12 +50,20 @@ class UserData {
   }
 
   Future<void> storeFCMToken(String userId) async {
-  final token = await NotificationService.getDeviceToken();
-  if (token != null) {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .set({'fcmToken': token}, SetOptions(merge: true));
+    final token = await NotificationService.getDeviceToken();
+    if (token != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .set({'fcmToken': token}, SetOptions(merge: true));
+    }
+    
   }
-}
+
+  void updateUserActivity(String userId) {
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .update({'lastActive': FieldValue.serverTimestamp()});
+    }
 }

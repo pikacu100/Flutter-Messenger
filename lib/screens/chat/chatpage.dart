@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_messenger/services/chat/chat_service.dart';
 import 'package:flutter_messenger/services/chat/typing_indicator.dart';
 import 'package:flutter_messenger/services/encryption.dart';
+import 'package:flutter_messenger/services/user.dart';
 import 'package:flutter_messenger/style.dart';
 
 class ChatPage extends StatefulWidget {
@@ -32,6 +33,8 @@ class _ChatPageState extends State<ChatPage> {
   late TypingIndicator _typingIndicator;
   Timer? _typingTimer;
   bool _isFirstLoad = true;
+  bool _isUserInChat = true;
+  StreamSubscription? _messagesSubscription;
 
   @override
   void initState() {
@@ -41,9 +44,12 @@ class _ChatPageState extends State<ChatPage> {
     _typingIndicator =
         TypingIndicator(chatRoomId, currentUserId, widget.receiverUserId);
     _markMessagesAsSeen();
+    UserData().updateUserActivity(currentUserId);
+    _subscribeToMessages();
   }
 
   void sendMessage() async {
+    UserData().updateUserActivity(currentUserId);
     if (_messageController.text.isNotEmpty) {
       await _chatService.sendMessage(
         message: _messageController.text,
@@ -53,6 +59,29 @@ class _ChatPageState extends State<ChatPage> {
       _clearTypingStatus();
       _scrollToBottom();
     }
+  }
+
+  void _subscribeToMessages() {
+    _messagesSubscription = _chatService
+        .getMessages(
+      userId: widget.receiverUserId,
+      anotherUserId: currentUserId,
+    )
+        .listen((QuerySnapshot snapshot) {
+      if (_isUserInChat) {
+        for (var doc in snapshot.docChanges) {
+          if (doc.type == DocumentChangeType.added) {
+            final data = doc.doc.data() as Map<String, dynamic>;
+            if (data['senderId'] != currentUserId &&
+                (!data.containsKey('seen') || !data['seen'][currentUserId])) {
+              _chatService.markMessagesAsSeen(
+                otherUserId: widget.receiverUserId,
+              );
+            }
+          }
+        }
+      }
+    });
   }
 
   void _markMessagesAsSeen() {
@@ -89,6 +118,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void detectTyping() {
+    _scrollToBottom();
     _typingTimer?.cancel();
     _typingIndicator.updateTypingStatus(true);
     _typingTimer = Timer(const Duration(seconds: 3), () {
@@ -117,7 +147,15 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _isUserInChat = true;
+  }
+
+  @override
   void dispose() {
+    _isUserInChat = false;
+    _messagesSubscription?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     _typingTimer?.cancel();
@@ -221,12 +259,25 @@ class _ChatPageState extends State<ChatPage> {
           final docs = snapshot.data!.docs;
           List<Widget> messageWidgets = [];
 
+          String? lastMessageIdFromMe;
+          for (var doc in docs.reversed) {
+            final data = doc.data() as Map<String, dynamic>;
+            if (data['senderId'] == currentUserId) {
+              lastMessageIdFromMe = doc.id;
+              break;
+            }
+          }
+
           for (int i = 0; i < docs.length; i++) {
             final currentDoc = docs[i];
             final bool isLastInGroup = _isLastMessageInTimeGroup(docs, i);
+            final bool isLastFromMe = currentDoc.id == lastMessageIdFromMe;
 
-            messageWidgets
-                .add(_buildMessageItem(currentDoc, showTime: isLastInGroup));
+            messageWidgets.add(_buildMessageItem(
+              currentDoc,
+              showTime: isLastInGroup,
+              isLastFromMe: isLastFromMe,
+            ));
           }
 
           return ListView(
@@ -256,7 +307,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildMessageItem(DocumentSnapshot snapshot,
-      {required bool showTime}) {
+      {required bool showTime, required bool isLastFromMe}) {
     Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
 
     var isMe = data['senderId'] == currentUserId;
@@ -290,6 +341,7 @@ class _ChatPageState extends State<ChatPage> {
               },
               child: Container(
                 padding: const EdgeInsets.all(8.0),
+                margin:isMe? const EdgeInsets.only(left: 25.0) : const EdgeInsets.only(right: 25.0),
                 decoration: BoxDecoration(
                   color: color,
                   borderRadius: BorderRadius.circular(8.0),
@@ -310,7 +362,7 @@ class _ChatPageState extends State<ChatPage> {
                     formatTimeStamp(data['timestamp']),
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
-                  if (isMe)
+                  if (isMe && isLastFromMe)
                     Padding(
                       padding: const EdgeInsets.only(left: 4.0),
                       child: Icon(
@@ -387,6 +439,8 @@ class _ChatPageState extends State<ChatPage> {
             controller: _messageController,
             onChanged: (_) => detectTyping(),
             cursorColor: Colors.blueAccent,
+            minLines: 1,
+            maxLines: 5,
             decoration: InputDecoration(
               hintText: 'Send message...',
               hintStyle: TextStyle(color: Colors.grey.shade500),

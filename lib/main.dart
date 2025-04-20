@@ -16,7 +16,6 @@ final FirebaseMessaging firebaseMessaging = FirebaseMessaging.instance;
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  print('Handling a background message: ${message.messageId}');
 }
 
 void main() async {
@@ -27,8 +26,6 @@ void main() async {
   );
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-  
-
     if (message.notification != null) {
       _showFlutterNotification(message);
     }

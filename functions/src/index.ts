@@ -9,51 +9,32 @@ export const sendMessageNotification = onDocumentCreated(
   "chatrooms/{chatRoomId}/messages/{messageId}",
   async (event) => {
     const snapshot = event.data;
-    if (!snapshot) {
-      return;
-    }
+    if (!snapshot) return;
 
     const messageData = snapshot.data();
-    const chatRoomId = event.params.chatRoomId;
-
-    if (messageData.notificationSent || messageData.systemMessage) {
-      return;
-    }
-
-    const senderId = messageData.senderId;
-    const receiverId = messageData.receiverId;
+    if (messageData.notificationSent || messageData.systemMessage) return;
 
     const db = getFirestore();
-    const [senderSnapshot, receiverSnapshot] = await Promise.all([
-      db.collection("users").doc(senderId).get(),
-      db.collection("users").doc(receiverId).get(),
+    const [sender, receiver] = await Promise.all([
+      db.collection("users").doc(messageData.senderId).get(),
+      db.collection("users").doc(messageData.receiverId).get(),
     ]);
 
-    const sender = senderSnapshot.data();
-    const receiver = receiverSnapshot.data();
+    if (!receiver.data()?.fcmToken) return;
 
-    if (!receiver?.fcmToken || receiver?.notificationEnabled === false) {
-      return;
-    }
-
-    const payload = {
+    await getMessaging().send({
       notification: {
-        title: `${sender?.displayName || "New message"}`,
+        title: sender.data()?.nickname || "New message",
         body: messageData.message,
       },
       data: {
-        chatRoomId: chatRoomId,
-        senderId: senderId,
+        chatRoomId: event.params.chatRoomId,
+        senderId: messageData.senderId,
         click_action: "FLUTTER_NOTIFICATION_CLICK",
       },
-      token: receiver.fcmToken,
-    };
+      token: receiver.data()?.fcmToken,
+    });
 
-    try {
-      await getMessaging().send(payload);
-      await snapshot.ref.update({notificationSent: true});
-      console.log("Notification sent successfully");
-    } catch (error) {
-      console.error("Error sending notification:", error);
-    }
-  });
+    await snapshot.ref.update({notificationSent: true});
+  }
+);
