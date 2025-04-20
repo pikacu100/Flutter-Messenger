@@ -146,6 +146,29 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
+  bool isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String formatDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+    final nowYear = now.year;
+    final messageDate = DateTime(date.year, date.month, date.day);
+    final messageYear = date.year;
+
+    if (messageDate == today) {
+      return 'Today';
+    } else if (messageDate == yesterday) {
+      return 'Yesterday';
+    } else if (messageYear == nowYear) {
+      return '${date.day}.${date.month}';
+    } else {
+      return '${date.day}.${date.month}.${date.year}';
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -268,8 +291,20 @@ class _ChatPageState extends State<ChatPage> {
             }
           }
 
+          DateTime? previousDate;
           for (int i = 0; i < docs.length; i++) {
             final currentDoc = docs[i];
+            final currentData = currentDoc.data() as Map<String, dynamic>;
+            final currentDate =
+                (currentData['timestamp'] as Timestamp).toDate();
+
+            if (previousDate == null || !isSameDay(previousDate, currentDate)) {
+              messageWidgets.add(
+                _buildDateDivider(currentDate),
+              );
+            }
+            previousDate = currentDate;
+
             final bool isLastInGroup = _isLastMessageInTimeGroup(docs, i);
             final bool isLastFromMe = currentDoc.id == lastMessageIdFromMe;
 
@@ -279,7 +314,6 @@ class _ChatPageState extends State<ChatPage> {
               isLastFromMe: isLastFromMe,
             ));
           }
-
           return ListView(
             controller: _scrollController,
             children: messageWidgets,
@@ -341,7 +375,9 @@ class _ChatPageState extends State<ChatPage> {
               },
               child: Container(
                 padding: const EdgeInsets.all(8.0),
-                margin:isMe? const EdgeInsets.only(left: 25.0) : const EdgeInsets.only(right: 25.0),
+                margin: isMe
+                    ? const EdgeInsets.only(left: 25.0)
+                    : const EdgeInsets.only(right: 25.0),
                 decoration: BoxDecoration(
                   color: color,
                   borderRadius: BorderRadius.circular(8.0),
@@ -374,6 +410,27 @@ class _ChatPageState extends State<ChatPage> {
                 ],
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateDivider(DateTime date) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          formatDate(date),
+          style: TextStyle(
+            color: Colors.grey.shade700,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );
