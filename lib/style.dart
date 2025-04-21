@@ -9,4 +9,6 @@ class FontStyles {
       color: isDarkMode ? Colors.white : Colors.grey.shade900,
     );
   }
+
+  textFieldStyle(bool isDarkMode) {}
 }

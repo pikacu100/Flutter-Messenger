@@ -21,6 +21,23 @@ class UserData {
     }
   }
 
+  Future<Map<String, dynamic>?> getUserData() async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .get();
+      if (userDoc.exists) {
+        return userDoc.data();
+      } else {
+        print("User document does not exist.");
+      }
+    } catch (e) {
+      print("Error getting user data: $e");
+    }
+    return null;
+  }
+
   Future<void> updateUserNickname(String name) async {
     try {
       await FirebaseFirestore.instance
@@ -57,13 +74,26 @@ class UserData {
           .doc(userId)
           .set({'fcmToken': token}, SetOptions(merge: true));
     }
-    
   }
 
-  void updateUserActivity(String userId) {
-      FirebaseFirestore.instance
+  Future<void> updateUserActivity(String userId) async {
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .update({'lastActive': FieldValue.serverTimestamp()});
+  }
+
+  Future<void> updateUserDisplayName(String name) async {
+    final nameToSave = name.trim().isNotEmpty ? name : "Anonymous_${user!.uid}";
+    try {
+      await FirebaseFirestore.instance
           .collection('users')
-          .doc(userId)
-          .update({'lastActive': FieldValue.serverTimestamp()});
+          .doc(user!.uid)
+          .update({
+        'nickname': nameToSave,
+      });
+    } catch (e) {
+      print("Error updating user display name: $e");
     }
+  }
 }

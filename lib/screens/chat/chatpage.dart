@@ -307,7 +307,6 @@ class _ChatPageState extends State<ChatPage> {
 
             final bool isLastInGroup = _isLastMessageInTimeGroup(docs, i);
             final bool isLastFromMe = currentDoc.id == lastMessageIdFromMe;
-
             messageWidgets.add(_buildMessageItem(
               currentDoc,
               showTime: isLastInGroup,

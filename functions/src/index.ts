@@ -22,19 +22,26 @@ export const sendMessageNotification = onDocumentCreated(
 
     if (!receiver.data()?.fcmToken) return;
 
-    await getMessaging().send({
-      notification: {
-        title: sender.data()?.nickname || "New message",
-        body: messageData.message,
-      },
-      data: {
-        chatRoomId: event.params.chatRoomId,
-        senderId: messageData.senderId,
-        click_action: "FLUTTER_NOTIFICATION_CLICK",
-      },
-      token: receiver.data()?.fcmToken,
-    });
+    const receiverData = receiver.data();
+    const lastActiveTimestamp = receiverData?.lastActive?.toDate() ||
+      new Date(0);
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-    await snapshot.ref.update({notificationSent: true});
+    if (lastActiveTimestamp < fiveMinutesAgo) {
+      await getMessaging().send({
+        notification: {
+          title: sender.data()?.nickname || "New message",
+          body: "You have a new message",
+        },
+        data: {
+          chatRoomId: event.params.chatRoomId,
+          senderId: messageData.senderId,
+          click_action: "FLUTTER_NOTIFICATION_CLICK",
+        },
+        token: receiver.data()?.fcmToken,
+      });
+
+      await snapshot.ref.update({notificationSent: true});
+    }
   }
 );
