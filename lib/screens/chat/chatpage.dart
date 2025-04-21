@@ -189,6 +189,23 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final gradientColors = isDarkMode
+        ? [
+            const Color(0xFF242424),
+            const Color(0xFF202020),
+            const Color(0xFF1C1C1C),
+            const Color(0xFF181818),
+            const Color(0xFF141414),
+            const Color(0xFF101010),
+          ]
+        : [
+            const Color(0xFFFAFAFA),
+            const Color(0xFFF5F5F5),
+            const Color(0xFFF0F0F0),
+            const Color(0xFFEBEBEB),
+            const Color(0xFFE6E6E6),
+            const Color(0xFFE0E0E0),
+          ];
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF121212) : Colors.white,
       appBar: AppBar(
@@ -208,38 +225,48 @@ class _ChatPageState extends State<ChatPage> {
           },
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 5),
-        child: Column(
-          children: [
-            Expanded(
-              child: _buildMessageList(),
-            ),
-            StreamBuilder<bool>(
-              stream: _typingIndicator.isReceiverTyping(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data == true) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Row(
-                      children: [
-                        Text(
-                          '${widget.receiverUserNickname} is typing...',
-                          style: TextStyle(
-                            fontStyle: FontStyle.italic,
-                            color: Colors.grey.shade600,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors,
+            end: Alignment.bottomCenter,
+            begin: Alignment.topCenter,
+            stops: const [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 5),
+          child: Column(
+            children: [
+              Expanded(
+                child: _buildMessageList(),
+              ),
+              StreamBuilder<bool>(
+                stream: _typingIndicator.isReceiverTyping(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data == true) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${widget.receiverUserNickname} is typing...',
+                            style: TextStyle(
+                              fontStyle: FontStyle.italic,
+                              color: Colors.grey.shade600,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                } else {
-                  return const SizedBox.shrink();
-                }
-              },
-            ),
-            _buildMessageInput(isDarkMode),
-          ],
+                        ],
+                      ),
+                    );
+                  } else {
+                    return const SizedBox.shrink();
+                  }
+                },
+              ),
+              _buildMessageInput(isDarkMode),
+            ],
+          ),
         ),
       ),
     );
