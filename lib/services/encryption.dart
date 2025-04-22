@@ -4,7 +4,6 @@ import 'package:encrypt/encrypt.dart';
 import 'package:crypto/crypto.dart';
 
 class EncryptionService {
-
   static Key getKeyFromUid(String uid) {
     final bytes = utf8.encode(uid);
     final digest = sha256.convert(bytes);

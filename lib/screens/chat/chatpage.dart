@@ -161,7 +161,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _cancelImageSelection() async {
-    if (_currentUploadTask != null) {
+    if (_currentUploadTask != null && _isUploading) {
       await _currentUploadTask!.cancel();
     }
 
@@ -200,7 +200,7 @@ class _ChatPageState extends State<ChatPage> {
       } else {
         await _chatService.sendMessage(
           receiverId: widget.receiverUserId,
-          message: _messageController.text,
+          message: _messageController.text.toString(),
         );
       }
 
@@ -503,7 +503,7 @@ class _ChatPageState extends State<ChatPage> {
 
     final hasImage = data['imageUrl'] != null && data['imageUrl'].isNotEmpty;
     final messageText = hasImage
-        ? (data['message']?.isNotEmpty ?? false ? data['message'] : '📷 Photo')
+        ? (data['message']?.isNotEmpty ?? false ? decryptMessage(data['message']) : '📷 Photo')
         : decryptMessage(data['message']);
 
     return Padding(
@@ -728,9 +728,16 @@ class _ChatPageState extends State<ChatPage> {
                     fit: BoxFit.cover,
                   ),
           ),
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.red),
-            onPressed: _cancelImageSelection,
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: isDarkMode ? Colors.grey[800]!.withOpacity(0.5) : Colors.grey[200]!.withOpacity(0.5),
+              shape: BoxShape.circle,
+            ),
+            child: GestureDetector(
+              onTap: _cancelImageSelection,
+              child: Icon(Icons.close, color:isDarkMode? Colors.grey[200]:Colors.grey[800]  ),
+            ),
           ),
         ],
       ),
