@@ -148,27 +148,31 @@ Future<XFile?> showImageSourceDialog(BuildContext context, bool isDarkMode) asyn
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                buildImageSourceButton(
-                  context: context,
-                  isDarkMode: isDarkMode,
-                  text: "Gallery",
-                  icon: Icons.photo_library,
-                  onPressed: () async {
-                    final ImagePicker picker = ImagePicker();
-                    final XFile? file = await picker.pickImage(source: ImageSource.gallery);
-                    Navigator.of(context).pop(file);
-                  },
+                Expanded(
+                  child: buildImageSourceButton(
+                    context: context,
+                    isDarkMode: isDarkMode,
+                    text: "Gallery",
+                    icon: Icons.photo_library,
+                    onPressed: () async {
+                      final ImagePicker picker = ImagePicker();
+                      final XFile? file = await picker.pickImage(source: ImageSource.gallery);
+                      Navigator.of(context).pop(file);
+                    },
+                  ),
                 ),
-                buildImageSourceButton(
-                  context: context,
-                  isDarkMode: isDarkMode,
-                  text: "Camera",
-                  icon: Icons.photo_camera,
-                  onPressed: () async {
-                    final ImagePicker picker = ImagePicker();
-                    final XFile? file = await picker.pickImage(source: ImageSource.camera);
-                    Navigator.of(context).pop(file);
-                  },
+                Expanded(
+                  child: buildImageSourceButton(
+                    context: context,
+                    isDarkMode: isDarkMode,
+                    text: "Camera",
+                    icon: Icons.photo_camera,
+                    onPressed: () async {
+                      final ImagePicker picker = ImagePicker();
+                      final XFile? file = await picker.pickImage(source: ImageSource.camera);
+                      Navigator.of(context).pop(file);
+                    },
+                  ),
                 ),
               ],
             ),
@@ -212,6 +216,35 @@ Widget buildImageSourceButton({
             ),
           ),
         ],
+      ),
+    ),
+  );
+}
+
+Widget showImagePreview(BuildContext context, String imageUrl, bool isDarkMode) {
+
+  return GestureDetector(
+    onTap: () {
+      Navigator.of(context).pop();
+    },
+    child: Container(
+      color: isDarkMode ? Colors.black : Colors.white,
+      child: Center(
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        (loadingProgress.expectedTotalBytes ?? 1)
+                    : null,
+              ),
+            );
+          },
+        ),
       ),
     ),
   );

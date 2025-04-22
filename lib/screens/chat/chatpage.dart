@@ -31,7 +31,7 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
- final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _messageController = TextEditingController();
   final ChatService _chatService = ChatService();
   final ScrollController _scrollController = ScrollController();
   late String chatRoomId;
@@ -52,7 +52,8 @@ class _ChatPageState extends State<ChatPage> {
     super.initState();
     currentUserId = FirebaseAuth.instance.currentUser!.uid;
     chatRoomId = getChatRoomId(currentUserId, widget.receiverUserId);
-    _typingIndicator = TypingIndicator(chatRoomId, currentUserId, widget.receiverUserId);
+    _typingIndicator =
+        TypingIndicator(chatRoomId, currentUserId, widget.receiverUserId);
     _markMessagesAsSeen();
     UserData().updateUserActivity(currentUserId);
     _subscribeToMessages();
@@ -110,10 +111,9 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-   
-
   Future<void> _pickImage(ImageSource source) async {
-    final XFile? pickedFile = await showImageSourceDialog(context, Theme.of(context).brightness == Brightness.dark);
+    final XFile? pickedFile = await showImageSourceDialog(
+        context, Theme.of(context).brightness == Brightness.dark);
     if (pickedFile != null) {
       setState(() {
         _selectedImage = File(pickedFile.path);
@@ -132,7 +132,8 @@ class _ChatPageState extends State<ChatPage> {
       String fileName = 'image_${DateTime.now().millisecondsSinceEpoch}.jpg';
       String destination = 'images/$fileName';
 
-      final Reference storageRef = FirebaseStorage.instance.ref().child(destination);
+      final Reference storageRef =
+          FirebaseStorage.instance.ref().child(destination);
       _currentUploadTask = storageRef.putFile(_selectedImage!);
 
       _currentUploadTask!.snapshotEvents.listen((TaskSnapshot snapshot) {
@@ -361,7 +362,7 @@ class _ChatPageState extends State<ChatPage> {
           child: Column(
             children: [
               Expanded(
-                child: _buildMessageList(),
+                child: _buildMessageList(isDarkMode),
               ),
               StreamBuilder<bool>(
                 stream: _typingIndicator.isReceiverTyping(),
@@ -395,7 +396,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildMessageList() {
+  Widget _buildMessageList(bool isDarkMode) {
     return StreamBuilder(
         stream: _chatService.getMessages(
             userId: widget.receiverUserId, anotherUserId: currentUserId),
@@ -456,9 +457,11 @@ class _ChatPageState extends State<ChatPage> {
             previousDate = currentDate;
 
             final bool isLastInGroup = _isLastMessageInTimeGroup(docs, i);
+
             final bool isLastFromMe = currentDoc.id == lastMessageIdFromMe;
             messageWidgets.add(_buildMessageItem(
               currentDoc,
+              isDarkMode,
               showTime: isLastInGroup,
               isLastFromMe: isLastFromMe,
             ));
@@ -489,7 +492,7 @@ class _ChatPageState extends State<ChatPage> {
     return timeDifference >= 5;
   }
 
-  Widget _buildMessageItem(DocumentSnapshot snapshot,
+  Widget _buildMessageItem(DocumentSnapshot snapshot, bool isDarkMode,
       {required bool showTime, required bool isLastFromMe}) {
     Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
     var isMe = data['senderId'] == currentUserId;
@@ -503,112 +506,145 @@ class _ChatPageState extends State<ChatPage> {
 
     final hasImage = data['imageUrl'] != null && data['imageUrl'].isNotEmpty;
     final messageText = hasImage
-        ? (data['message']?.isNotEmpty ?? false ? decryptMessage(data['message']) : '📷 Photo')
+        ? (data['message']?.isNotEmpty ?? false
+            ? decryptMessage(data['message'])
+            : '📷 Photo')
         : decryptMessage(data['message']);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Align(
-        alignment: alignment,
-        child: Column(
-          crossAxisAlignment:
-              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            GestureDetector(
-              onLongPressStart: (LongPressStartDetails details) {
-                _showMessageOptionsAtPosition(
-                  context,
-                  details.globalPosition,
-                  snapshot.id,
-                  isMe,
-                  hasImage ? 'Image' : decryptMessage(data['message']),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8.0),
-                margin: isMe
-                    ? const EdgeInsets.only(left: 25.0)
-                    : const EdgeInsets.only(right: 25.0),
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-                child: Column(
-                  crossAxisAlignment:
-                      isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                  children: [
-                    if (hasImage)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8.0),
-                          child: Image.network(
-                            data['imageUrl'],
-                            width: 200,
-                            height: 200,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                width: 200,
-                                height: 200,
-                                color: Colors.grey[300],
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes !=
-                                            null
-                                        ? loadingProgress
-                                                .cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                        : null,
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 200,
-                                height: 200,
-                                color: Colors.grey[300],
-                                child: const Center(
-                                  child: Icon(Icons.error),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    if (messageText.isNotEmpty)
-                      Text(
-                        messageText,
-                        style: TextStyle(color: Colors.grey.shade900),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            if (showTime)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    formatTimeStamp(data['timestamp']),
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                  if (isMe && isLastFromMe)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4.0),
-                      child: Icon(
-                        hasBeenSeen ? Icons.done_all : Icons.done,
-                        size: 14.0,
-                        color: hasBeenSeen ? Colors.blue : Colors.grey.shade600,
-                      ),
+      child: Column(
+        children: [
+          Align(
+            alignment: alignment,
+            child: Column(
+              crossAxisAlignment:
+                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onLongPressStart: (LongPressStartDetails details) {
+                    _showMessageOptionsAtPosition(
+                      context,
+                      details.globalPosition,
+                      snapshot.id,
+                      isMe,
+                      hasImage ? 'Image' : decryptMessage(data['message']),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8.0),
+                    margin: isMe
+                        ? const EdgeInsets.only(left: 25.0)
+                        : const EdgeInsets.only(right: 25.0),
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(8.0),
                     ),
-                ],
-              ),
-          ],
-        ),
+                    child: Column(
+                      crossAxisAlignment: isMe
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
+                      children: [
+                        if (hasImage)
+                          GestureDetector(
+                            onTap: () {
+                              showAdaptiveDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return showImagePreview(
+                                      context,
+                                      data['imageUrl'],
+                                      isDarkMode,
+                                    );
+                                  });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8.0),
+                                child: Image.network(
+                                  data['imageUrl'],
+                                  width: 200,
+                                  height: 200,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Container(
+                                      width: 200,
+                                      height: 200,
+                                      color: isDarkMode
+                                          ? Colors.grey[800]
+                                          : Colors.grey[200],
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          color: Colors.blue,
+                                          value: loadingProgress
+                                                      .expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 200,
+                                      height: 200,
+                                      color: Colors.grey[300],
+                                      child: const Center(
+                                        child: Icon(Icons.error),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (messageText.isNotEmpty)
+                          Text(
+                            messageText,
+                            style: TextStyle(color: Colors.grey.shade900),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (isMe && isLastFromMe && showTime)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4.0),
+                    child: Icon(
+                      hasBeenSeen ? Icons.done_all : Icons.done,
+                      size: 14.0,
+                      color: hasBeenSeen ? Colors.blue : Colors.grey.shade600,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (showTime)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                _buildDateMessage(
+                  formatTimeStamp(data['timestamp']),
+                ),
+              ],
+            ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildDateMessage(String date) {
+    return Text(
+      date,
+      style: TextStyle(color: Colors.grey.shade600),
     );
   }
 
@@ -685,72 +721,113 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-   Widget _buildImagePreview(bool isDarkMode) {
+  Widget _buildImagePreview(bool isDarkMode) {
     if (_selectedImage == null) return const SizedBox.shrink();
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      height: 100,
-      width: 100,
-      child: Stack(
-        alignment: Alignment.topRight,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: _isUploading
-                ? Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Image.file(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          color: Colors.transparent,
+          height: 100,
+          width: 100,
+          child: Stack(
+            alignment: Alignment.topRight,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: _isUploading
+                    ? Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Image.file(
+                            _selectedImage!,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            top: 0,
+                            child: SizedBox(
+                              width: 100,
+                              height: double.infinity,
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  return Stack(
+                                    children: [
+                                      Container(
+                                        width: 100,
+                                        height: double.infinity,
+                                        color:
+                                            Colors.grey[200]!.withOpacity(0.2),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.bottomCenter,
+                                        child: Container(
+                                          width: 100,
+                                          height: constraints.maxHeight *
+                                              _uploadProgress,
+                                          color: Colors.grey[800]!
+                                              .withOpacity(0.8),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${(_uploadProgress * 100).toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              color: Colors.grey.shade200,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Image.file(
                         _selectedImage!,
                         width: double.infinity,
                         height: double.infinity,
                         fit: BoxFit.cover,
                       ),
-                      CircularProgressIndicator(
-                        value: _uploadProgress,
-                        backgroundColor: Colors.grey[200],
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-                      ),
-                      Text(
-                        '${(_uploadProgress * 100).toStringAsFixed(0)}%',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  )
-                : Image.file(
-                    _selectedImage!,
-                    width: double.infinity,
-                    height: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(4),
+                margin: const EdgeInsets.only(top: 4, right: 4),
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? Colors.grey[800]!.withOpacity(0.5)
+                      : Colors.grey[200]!.withOpacity(0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: GestureDetector(
+                  onTap: _cancelImageSelection,
+                  child: Icon(Icons.close,
+                      color: isDarkMode ? Colors.grey[200] : Colors.grey[800]),
+                ),
+              ),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: isDarkMode ? Colors.grey[800]!.withOpacity(0.5) : Colors.grey[200]!.withOpacity(0.5),
-              shape: BoxShape.circle,
-            ),
-            child: GestureDetector(
-              onTap: _cancelImageSelection,
-              child: Icon(Icons.close, color:isDarkMode? Colors.grey[200]:Colors.grey[800]  ),
-            ),
-          ),
-        ],
-      ),
+        )
+      ],
     );
   }
 
- Widget _buildMessageInput(bool isDarkMode) {
+  Widget _buildMessageInput(bool isDarkMode) {
     return Column(
       children: [
         Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.photo_library),
+              icon: const Icon(
+                Icons.photo_library,
+                color: Colors.grey,
+              ),
               onPressed: () => _pickImage(ImageSource.gallery),
             ),
             Expanded(
