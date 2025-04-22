@@ -18,3 +18,7 @@ A simple and modern real-time chat application built with Flutter and powered by
 🧠 Clean and modular code structure
 
 📱 Fully responsive and mobile-ready
+![Alt text](images/chatlightmode.png)
+![Alt text](images/chatdarkmode.png)
+![Alt text](images/login.png)
+![Alt text](images/welcomepage.png)
