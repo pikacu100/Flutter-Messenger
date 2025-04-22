@@ -515,6 +515,16 @@ class _ChatPageState extends State<ChatPage> {
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Column(
         children: [
+          if (showTime)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                _buildDateMessage(
+                  formatTimeStamp(data['timestamp']),
+                ),
+              ],
+            ),
           Align(
             alignment: alignment,
             child: Column(
@@ -626,16 +636,7 @@ class _ChatPageState extends State<ChatPage> {
               ],
             ),
           ),
-          if (showTime)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                _buildDateMessage(
-                  formatTimeStamp(data['timestamp']),
-                ),
-              ],
-            ),
+          
         ],
       ),
     );
