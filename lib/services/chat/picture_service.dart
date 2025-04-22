@@ -1,8 +1,9 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:async';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_messenger/services/chat/chat_service.dart';
 import 'package:image_picker/image_picker.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
@@ -117,8 +118,8 @@ class UploadProgress {
   });
 }
 
-void showImageSourceDialog(BuildContext context, bool isDarkMode) {
-  showModalBottomSheet(
+Future<XFile?> showImageSourceDialog(BuildContext context, bool isDarkMode) async {
+  return await showModalBottomSheet<XFile?>(
     context: context,
     builder: (BuildContext context) {
       return Container(
@@ -148,23 +149,27 @@ void showImageSourceDialog(BuildContext context, bool isDarkMode) {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 buildImageSourceButton(
-                    context: context,
-                    isDarkMode: isDarkMode,
-                    text: "Gallery",
-                    icon: Icons.photo_library,
-                    onPressed: () {
-                      ImagePickerService().getImage(ImageSource.gallery);
-                      Navigator.of(context).pop();
-                    }),
+                  context: context,
+                  isDarkMode: isDarkMode,
+                  text: "Gallery",
+                  icon: Icons.photo_library,
+                  onPressed: () async {
+                    final ImagePicker picker = ImagePicker();
+                    final XFile? file = await picker.pickImage(source: ImageSource.gallery);
+                    Navigator.of(context).pop(file);
+                  },
+                ),
                 buildImageSourceButton(
-                    context: context,
-                    isDarkMode: isDarkMode,
-                    text: "Camera",
-                    icon: Icons.photo_camera,
-                    onPressed: () {
-                      ImagePickerService().getImage(ImageSource.camera);
-                      Navigator.of(context).pop();
-                    }),
+                  context: context,
+                  isDarkMode: isDarkMode,
+                  text: "Camera",
+                  icon: Icons.photo_camera,
+                  onPressed: () async {
+                    final ImagePicker picker = ImagePicker();
+                    final XFile? file = await picker.pickImage(source: ImageSource.camera);
+                    Navigator.of(context).pop(file);
+                  },
+                ),
               ],
             ),
           ],
@@ -210,239 +215,4 @@ Widget buildImageSourceButton({
       ),
     ),
   );
-}
-
-class ImagePickerService {
-  final ChatService chatService = ChatService();
-
-  Future<void> getImage(ImageSource source) async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? pickedFile = await picker.pickImage(source: source);
-
-    if (pickedFile != null) {
-      File imageFile = File(pickedFile.path);
-      String fileName = 'image_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      String destination = 'images/$fileName';
-
-      final uploadManager = UploadManager();
-      String? downloadUrl =
-          await uploadManager.uploadFile(imageFile, destination);
-
-      if (downloadUrl != null) {}
-    } else {
-      BuildContext? context = navigatorKey.currentContext;
-      if (context != null && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No image selected')),
-        );
-      }
-    }
-  }
-
-  Future<void> sendImage(
-      String imageUrl, String receiverId, String message) async {
-    await chatService.sendImageMessage(
-      receiverId: receiverId,
-      imageUrl: imageUrl,
-      caption: message,
-    );
-  }
-}
-
-class UploadProgressWidget extends StatelessWidget {
-  final bool isDarkMode;
-  final VoidCallback? onCancel;
-  final bool autoDismiss;
-  final Duration? autoDismissDuration;
-
-  const UploadProgressWidget({
-    super.key,
-    this.isDarkMode = false,
-    this.onCancel,
-    this.autoDismiss = true,
-    this.autoDismissDuration = const Duration(seconds: 1),
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<UploadProgress>(
-      stream: UploadManager().progressStream,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const SizedBox.shrink();
-        }
-
-        final progress = snapshot.data!;
-
-        if (progress.isCompleted) {
-          return _buildCompletedWidget(progress);
-        }
-
-        if (progress.error != null) {
-          return _buildErrorWidget(progress);
-        }
-
-        return _buildProgressWidget(progress);
-      },
-    );
-  }
-
-  Widget _buildCompletedWidget(UploadProgress progress) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey[850] : Colors.green[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle, color: Colors.green),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Upload Complete',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-                Text(
-                  progress.fileName,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorWidget(UploadProgress progress) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey[850] : Colors.red[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error, color: Colors.red),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Upload Failed',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-                Text(
-                  progress.fileName,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressWidget(UploadProgress progress) {
-    final percentComplete = (progress.progress * 100).toStringAsFixed(1);
-    final transferredMB =
-        (progress.bytesTransferred / (1024 * 1024)).toStringAsFixed(2);
-    final totalMB = (progress.totalBytes / (1024 * 1024)).toStringAsFixed(2);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey[850] : Colors.blue[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Uploading...',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    Text(
-                      progress.fileName,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              if (onCancel != null)
-                IconButton(
-                  icon: const Icon(Icons.cancel, color: Colors.red),
-                  onPressed: onCancel,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  iconSize: 20,
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          LinearProgressIndicator(
-            value: progress.progress,
-            backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300],
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '$percentComplete%',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
-                ),
-              ),
-              Text(
-                '$transferredMB MB / $totalMB MB',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }

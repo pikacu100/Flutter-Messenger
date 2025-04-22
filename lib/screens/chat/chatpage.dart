@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -12,6 +15,7 @@ import 'package:flutter_messenger/services/chat/typing_indicator.dart';
 import 'package:flutter_messenger/services/encryption.dart';
 import 'package:flutter_messenger/services/user.dart';
 import 'package:flutter_messenger/style.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ChatPage extends StatefulWidget {
   final String receiverUserNickname;
@@ -27,7 +31,7 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final TextEditingController _messageController = TextEditingController();
+ final TextEditingController _messageController = TextEditingController();
   final ChatService _chatService = ChatService();
   final ScrollController _scrollController = ScrollController();
   late String chatRoomId;
@@ -37,14 +41,18 @@ class _ChatPageState extends State<ChatPage> {
   bool _isFirstLoad = true;
   bool _isUserInChat = true;
   StreamSubscription? _messagesSubscription;
+  File? _selectedImage;
+  String? _uploadedImageUrl;
+  double _uploadProgress = 0;
+  bool _isUploading = false;
+  UploadTask? _currentUploadTask;
 
   @override
   void initState() {
     super.initState();
     currentUserId = FirebaseAuth.instance.currentUser!.uid;
     chatRoomId = getChatRoomId(currentUserId, widget.receiverUserId);
-    _typingIndicator =
-        TypingIndicator(chatRoomId, currentUserId, widget.receiverUserId);
+    _typingIndicator = TypingIndicator(chatRoomId, currentUserId, widget.receiverUserId);
     _markMessagesAsSeen();
     UserData().updateUserActivity(currentUserId);
     _subscribeToMessages();
@@ -100,6 +108,117 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     });
+  }
+
+   
+
+  Future<void> _pickImage(ImageSource source) async {
+    final XFile? pickedFile = await showImageSourceDialog(context, Theme.of(context).brightness == Brightness.dark);
+    if (pickedFile != null) {
+      setState(() {
+        _selectedImage = File(pickedFile.path);
+        _uploadedImageUrl = null;
+        _uploadProgress = 0;
+        _isUploading = true;
+      });
+      await _uploadImage();
+    }
+  }
+
+  Future<void> _uploadImage() async {
+    if (_selectedImage == null) return;
+
+    try {
+      String fileName = 'image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      String destination = 'images/$fileName';
+
+      final Reference storageRef = FirebaseStorage.instance.ref().child(destination);
+      _currentUploadTask = storageRef.putFile(_selectedImage!);
+
+      _currentUploadTask!.snapshotEvents.listen((TaskSnapshot snapshot) {
+        setState(() {
+          _uploadProgress = snapshot.bytesTransferred / snapshot.totalBytes;
+        });
+      });
+
+      final TaskSnapshot taskSnapshot = await _currentUploadTask!;
+      final String downloadUrl = await taskSnapshot.ref.getDownloadURL();
+
+      setState(() {
+        _uploadedImageUrl = downloadUrl;
+        _isUploading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _selectedImage = null;
+        _uploadedImageUrl = null;
+        _isUploading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload image: ${e.toString()}')),
+      );
+    }
+  }
+
+  void _cancelImageSelection() async {
+    if (_currentUploadTask != null) {
+      await _currentUploadTask!.cancel();
+    }
+
+    if (_uploadedImageUrl != null) {
+      try {
+        final ref = FirebaseStorage.instance.refFromURL(_uploadedImageUrl!);
+        await ref.delete();
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error deleting image: $e');
+        }
+      }
+    }
+
+    setState(() {
+      _selectedImage = null;
+      _uploadedImageUrl = null;
+      _uploadProgress = 0;
+      _isUploading = false;
+      _currentUploadTask = null;
+    });
+  }
+
+  Future<void> _sendMessageOrImage() async {
+    if (_messageController.text.isEmpty && _uploadedImageUrl == null) {
+      return;
+    }
+
+    try {
+      if (_uploadedImageUrl != null) {
+        await _chatService.sendImageMessage(
+          receiverId: widget.receiverUserId,
+          imageUrl: _uploadedImageUrl!,
+          caption: _messageController.text,
+        );
+      } else {
+        await _chatService.sendMessage(
+          receiverId: widget.receiverUserId,
+          message: _messageController.text,
+        );
+      }
+
+      setState(() {
+        _messageController.clear();
+        _selectedImage = null;
+        _uploadedImageUrl = null;
+        _uploadProgress = 0;
+        _isUploading = false;
+        _currentUploadTask = null;
+      });
+
+      _scrollToBottom();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to send message: ${e.toString()}')),
+      );
+    }
   }
 
   String formatTimeStamp(Timestamp timestamp) {
@@ -181,6 +300,7 @@ class _ChatPageState extends State<ChatPage> {
   void dispose() {
     _isUserInChat = false;
     _messagesSubscription?.cancel();
+    _currentUploadTask?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     _typingTimer?.cancel();
@@ -266,10 +386,7 @@ class _ChatPageState extends State<ChatPage> {
                   }
                 },
               ),
-              UploadProgressWidget(
-                isDarkMode: Theme.of(context).brightness == Brightness.dark,
-                onCancel: () => UploadManager().cancelUpload(),
-              ),
+              _buildImagePreview(isDarkMode),
               _buildMessageInput(isDarkMode),
             ],
           ),
@@ -372,7 +489,6 @@ class _ChatPageState extends State<ChatPage> {
     return timeDifference >= 5;
   }
 
- 
   Widget _buildMessageItem(DocumentSnapshot snapshot,
       {required bool showTime, required bool isLastFromMe}) {
     Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
@@ -569,52 +685,92 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  Widget _buildMessageInput(bool isDarkMode) {
-    return Row(
+   Widget _buildImagePreview(bool isDarkMode) {
+    if (_selectedImage == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      height: 100,
+      width: 100,
+      child: Stack(
+        alignment: Alignment.topRight,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: _isUploading
+                ? Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Image.file(
+                        _selectedImage!,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                      CircularProgressIndicator(
+                        value: _uploadProgress,
+                        backgroundColor: Colors.grey[200],
+                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                      ),
+                      Text(
+                        '${(_uploadProgress * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  )
+                : Image.file(
+                    _selectedImage!,
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.red),
+            onPressed: _cancelImageSelection,
+          ),
+        ],
+      ),
+    );
+  }
+
+ Widget _buildMessageInput(bool isDarkMode) {
+    return Column(
       children: [
-        IconButton(
-          icon: const Icon(Icons.photo_library),
-          onPressed: () => showImageSourceDialog(context, isDarkMode),
-        ),
-        Expanded(
-          child: TextField(
-            controller: _messageController,
-            onChanged: (_) => detectTyping(),
-            cursorColor: Colors.blueAccent,
-            minLines: 1,
-            maxLines: 5,
-            decoration: InputDecoration(
-              hintText: 'Send message...',
-              hintStyle: TextStyle(color: Colors.grey.shade500),
-              border: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.transparent),
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.transparent),
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.transparent),
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              filled: true,
-              fillColor:
-                  isDarkMode ? Colors.grey.shade900 : Colors.grey.shade300,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.photo_library),
+              onPressed: () => _pickImage(ImageSource.gallery),
             ),
-          ),
-        ),
-        const SizedBox(width: 12.0),
-        CircleAvatar(
-          backgroundColor: Colors.blueAccent,
-          radius: 20.0,
-          child: IconButton(
-            icon: const Icon(Icons.send, color: Colors.white),
-            onPressed: sendMessage,
-            iconSize: 24.0,
-          ),
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                onChanged: (_) => detectTyping(),
+                decoration: InputDecoration(
+                  hintText: 'Type a message...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            CircleAvatar(
+              backgroundColor: Colors.blue,
+              child: IconButton(
+                icon: const Icon(Icons.send, color: Colors.white),
+                onPressed: _sendMessageOrImage,
+              ),
+            ),
+          ],
         ),
       ],
     );
