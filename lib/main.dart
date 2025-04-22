@@ -12,6 +12,7 @@ import 'package:flutter_messenger/services/chat/notification_service.dart';
 import 'package:flutter_messenger/themes.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 final FirebaseMessaging firebaseMessaging = FirebaseMessaging.instance;
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -95,6 +96,7 @@ class _MainAppState extends State<MainApp> {
       darkTheme: AppThemes.darkTheme,
       navigatorObservers: <NavigatorObserver>[observer],
       navigatorKey: navigatorKey,
+      scaffoldMessengerKey: scaffoldMessengerKey,
       routes: {
         '/landing': (context) => LandingPage(onThemeChanged: handleThemeChange),
         '/authLog': (context) => LoginService(

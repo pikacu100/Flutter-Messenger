@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_messenger/services/chat/chat_service.dart';
+import 'package:flutter_messenger/services/chat/picture_service.dart';
 import 'package:flutter_messenger/services/chat/typing_indicator.dart';
 import 'package:flutter_messenger/services/encryption.dart';
 import 'package:flutter_messenger/services/user.dart';
@@ -264,6 +266,10 @@ class _ChatPageState extends State<ChatPage> {
                   }
                 },
               ),
+              UploadProgressWidget(
+                isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                onCancel: () => UploadManager().cancelUpload(),
+              ),
               _buildMessageInput(isDarkMode),
             ],
           ),
@@ -366,18 +372,23 @@ class _ChatPageState extends State<ChatPage> {
     return timeDifference >= 5;
   }
 
+ 
   Widget _buildMessageItem(DocumentSnapshot snapshot,
       {required bool showTime, required bool isLastFromMe}) {
     Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
-
     var isMe = data['senderId'] == currentUserId;
     var alignment = isMe ? Alignment.centerRight : Alignment.centerLeft;
     var color = isMe ? Colors.blue[100] : Colors.grey[300];
-
     bool hasBeenSeen = false;
+
     if (isMe && data['seen'] != null) {
       hasBeenSeen = data['seen'][widget.receiverUserId] ?? false;
     }
+
+    final hasImage = data['imageUrl'] != null && data['imageUrl'].isNotEmpty;
+    final messageText = hasImage
+        ? (data['message']?.isNotEmpty ?? false ? data['message'] : '📷 Photo')
+        : decryptMessage(data['message']);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -394,9 +405,7 @@ class _ChatPageState extends State<ChatPage> {
                   details.globalPosition,
                   snapshot.id,
                   isMe,
-                  decryptMessage(
-                    data['message'],
-                  ),
+                  hasImage ? 'Image' : decryptMessage(data['message']),
                 );
               },
               child: Container(
@@ -408,11 +417,57 @@ class _ChatPageState extends State<ChatPage> {
                   color: color,
                   borderRadius: BorderRadius.circular(8.0),
                 ),
-                child: Text(
-                  decryptMessage(
-                    data['message'],
-                  ),
-                  style: TextStyle(color: Colors.grey.shade900),
+                child: Column(
+                  crossAxisAlignment:
+                      isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  children: [
+                    if (hasImage)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: Image.network(
+                            data['imageUrl'],
+                            width: 200,
+                            height: 200,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                width: 200,
+                                height: 200,
+                                color: Colors.grey[300],
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes !=
+                                            null
+                                        ? loadingProgress
+                                                .cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 200,
+                                height: 200,
+                                color: Colors.grey[300],
+                                child: const Center(
+                                  child: Icon(Icons.error),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    if (messageText.isNotEmpty)
+                      Text(
+                        messageText,
+                        style: TextStyle(color: Colors.grey.shade900),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -517,6 +572,10 @@ class _ChatPageState extends State<ChatPage> {
   Widget _buildMessageInput(bool isDarkMode) {
     return Row(
       children: [
+        IconButton(
+          icon: const Icon(Icons.photo_library),
+          onPressed: () => showImageSourceDialog(context, isDarkMode),
+        ),
         Expanded(
           child: TextField(
             controller: _messageController,
@@ -532,15 +591,11 @@ class _ChatPageState extends State<ChatPage> {
                 borderRadius: BorderRadius.circular(10.0),
               ),
               focusedBorder: OutlineInputBorder(
-                borderSide: const BorderSide(
-                  color: Colors.transparent,
-                ),
+                borderSide: const BorderSide(color: Colors.transparent),
                 borderRadius: BorderRadius.circular(10.0),
               ),
               enabledBorder: OutlineInputBorder(
-                borderSide: const BorderSide(
-                  color: Colors.transparent,
-                ),
+                borderSide: const BorderSide(color: Colors.transparent),
                 borderRadius: BorderRadius.circular(10.0),
               ),
               filled: true,

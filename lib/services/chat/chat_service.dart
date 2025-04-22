@@ -64,6 +64,55 @@ class ChatService {
     }
   }
 
+  Future<void> sendImageMessage({
+  required String receiverId,
+  required String imageUrl,
+  String? caption,
+}) async {
+  final String senderId = currentUserId;
+  final Timestamp timestamp = Timestamp.now();
+  final String chatRoomId = getChatRoomId(senderId, receiverId);
+
+  Map<String, bool> seen = {
+    senderId: true,
+    receiverId: false,
+  };
+
+  Message newMessage = Message(
+    message: caption ?? '',
+    senderId: senderId,
+    receiverId: receiverId,
+    timestamp: timestamp,
+    seen: seen,
+    imageUrl: imageUrl,
+  );
+
+  try {
+    await FirebaseFirestore.instance
+        .collection('chatrooms')
+        .doc(chatRoomId)
+        .collection('messages')
+        .add(newMessage.toMap());
+
+    await FirebaseFirestore.instance
+        .collection('chatrooms')
+        .doc(chatRoomId)
+        .set({
+      'lastMessageTime': timestamp,
+      'participants': [senderId, receiverId],
+      'lastMessage': caption ?? 'Photo', 
+      'hasUnseenMessages': {
+        senderId: false,
+        receiverId: true,
+      },
+    }, SetOptions(merge: true));
+  } catch (e) {
+    if (kDebugMode) {
+      print("Error sending image message: $e");
+    }
+  }
+}
+
   
 
  
