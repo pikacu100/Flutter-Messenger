@@ -22,12 +22,11 @@ A simple and modern real-time chat application built with Flutter and powered by
 
 ----
 
-<p align="center">
-  <img src="assets/images/chatlightmode.png" alt="Chat Light Mode" width="300"/>
-  <img src="assets/images/chatdarkmode.png" alt="Chat Dark Mode" width="300"/>
-</p>
+| Chat Light Mode | Chat Dark Mode |
+|-----------------|----------------|
+| <img src="assets/images/chatlightmode.png" alt="Chat Light Mode" width="300" height="200"/> | <img src="assets/images/chatdarkmode.png" alt="Chat Dark Mode" width="300" height="200"/> |
 
-<p align="center">
-  <img src="assets/images/login.png" alt="Login Screen" width="300"/>
-  <img src="assets/images/welcomepage.png" alt="Welcome Page" width="300"/>
-</p>
+| Login Screen | Welcome Page |
+|--------------|--------------|
+| <img src="assets/images/login.png" alt="Login Screen" width="300" height="200"/> | <img src="assets/images/welcomepage.png" alt="Welcome Page" width="300" height="200"/> |
+
